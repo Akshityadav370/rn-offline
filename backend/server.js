@@ -2,15 +2,12 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// In-memory storage (no database needed)
 let syncedSubmissions = [];
 let syncHistory = [];
 
-// Colors for console output
 const colors = {
   reset: '\x1b[0m',
   bright: '\x1b[1m',
@@ -21,7 +18,6 @@ const colors = {
   magenta: '\x1b[35m',
 };
 
-// Helper function to print formatted output
 function printDivider() {
   console.log('\n' + '='.repeat(80) + '\n');
 }
@@ -43,7 +39,6 @@ function printData(label, data) {
   console.log(JSON.stringify(data, null, 2));
 }
 
-// Root endpoint
 app.get('/', (req, res) => {
   res.json({
     message: 'Offline Forms Sync API',
@@ -58,7 +53,6 @@ app.get('/', (req, res) => {
   });
 });
 
-// Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'healthy',
@@ -67,10 +61,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Zoho Form Sync Endpoint
 app.post('/api/zoho-forms/sync', async (req, res) => {
   const { submissions } = req.body;
-  //   console.log('submissions', submissions);
   if (!submissions || !Array.isArray(submissions)) {
     return res.status(400).json({
       error: 'Invalid request',
@@ -78,34 +70,26 @@ app.post('/api/zoho-forms/sync', async (req, res) => {
     });
   }
 
-  console.log(`📥 Received ${submissions.length} submissions to sync`);
-
   const syncedIds = [];
   const failedSubmissions = [];
 
   for (const submission of submissions) {
     try {
-      console.log(`🔄 Processing submission ${submission.id}...`);
-
       // Transform data to Zoho format
       const zohoData = transformToZohoFormat(submission.data);
-      console.log('zohoData', zohoData);
       // Submit to Zoho Forms
       //   const result = await submitToZoho(zohoData, submission);
       const result = { success: true };
 
       if (result.success) {
         syncedIds.push(submission.id);
-        console.log(`✅ Synced submission ${submission.id}`);
       } else {
         failedSubmissions.push({
           id: submission.id,
           error: result.error,
         });
-        console.error(`❌ Failed to sync ${submission.id}:`, result.error);
       }
     } catch (error) {
-      console.error(`❌ Error processing submission ${submission.id}:`, error);
       failedSubmissions.push({
         id: submission.id,
         error: error.message,
@@ -122,13 +106,12 @@ app.post('/api/zoho-forms/sync', async (req, res) => {
   });
 });
 
-// Transform data to Zoho format
 function transformToZohoFormat(data) {
   // Zoho forms typically expect URL-encoded form data
   const zohoData = {};
 
-  // Map your form fields to Zoho field names
-  // Adjust these based on your actual Zoho form field names
+  // Map form fields to Zoho field names
+  // Adjust these based on actual Zoho form field names
 
   if (data.SingleLine) zohoData.SingleLine = data.SingleLine;
   if (data.SingleLine4) zohoData.SingleLine4 = data.SingleLine4;
@@ -257,7 +240,6 @@ async function submitToZohoAPI(zohoData, originalSubmission) {
   }
 }
 
-// Sync endpoint - Main endpoint for form synchronization
 app.post('/api/forms/sync', (req, res) => {
   try {
     const { submissions } = req.body;
@@ -270,10 +252,6 @@ app.post('/api/forms/sync', (req, res) => {
     }
 
     printDivider();
-    printHeader('📥 NEW SYNC REQUEST RECEIVED');
-    printInfo(`Timestamp: ${new Date().toISOString()}`);
-    printInfo(`Number of submissions: ${submissions.length}`);
-    printInfo(`Client IP: ${req.ip}`);
 
     const syncedIds = [];
     const errors = [];
@@ -293,7 +271,6 @@ app.post('/api/forms/sync', (req, res) => {
           throw new Error('Missing required fields: id or data');
         }
 
-        // Print submission details
         printInfo(`Submission ID: ${submission.id}`);
         printInfo(`Form ID: ${submission.formId || 'N/A'}`);
         printInfo(
@@ -301,9 +278,6 @@ app.post('/api/forms/sync', (req, res) => {
         );
 
         printData('Form Data', submission.data);
-
-        // Simulate processing delay
-        // In real scenario, you would save to database here
 
         // Store in memory
         syncedSubmissions.push({
@@ -376,7 +350,6 @@ app.post('/api/forms/sync', (req, res) => {
   }
 });
 
-// Get sync history
 app.get('/api/forms/history', (req, res) => {
   printInfo('📊 Sync history requested');
 
@@ -386,7 +359,6 @@ app.get('/api/forms/history', (req, res) => {
   });
 });
 
-// Get all synced submissions
 app.get('/api/forms/submissions', (req, res) => {
   printInfo('📋 All submissions requested');
 
@@ -396,7 +368,6 @@ app.get('/api/forms/submissions', (req, res) => {
   });
 });
 
-// Clear all data
 app.delete('/api/forms/clear', (req, res) => {
   const submissionCount = syncedSubmissions.length;
   const historyCount = syncHistory.length;
@@ -405,7 +376,6 @@ app.delete('/api/forms/clear', (req, res) => {
   syncHistory = [];
 
   printDivider();
-  printHeader('🗑️  DATA CLEARED');
   printInfo(`Cleared ${submissionCount} submissions`);
   printInfo(`Cleared ${historyCount} sync records`);
   printDivider();
@@ -418,13 +388,10 @@ app.delete('/api/forms/clear', (req, res) => {
   });
 });
 
-// Start server
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.clear();
-  printDivider();
-  printHeader('🚀 OFFLINE FORMS SYNC API SERVER');
   printDivider();
   printSuccess(`Server running on http://localhost:${PORT}`);
   printSuccess(`API ready to receive sync requests`);
@@ -452,7 +419,6 @@ app.listen(PORT, () => {
   printDivider();
 });
 
-// Graceful shutdown
 process.on('SIGTERM', () => {
   printInfo('SIGTERM signal received: closing HTTP server');
   app.close(() => {
